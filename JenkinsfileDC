@@ -1,0 +1,27 @@
+node
+{
+def mavenhome = tool name: "maven3.6.3"
+stage("checkout code")
+{
+git credentialsId: 'f2f6adb8-2a3f-49a3-b8f5-a69c47efe704', url: 'https://github.com/karthikdevopstraining/java-web-app-docker.git'
+}
+stage("build")
+{
+sh "${mavenhome}/bin/mvn clean package"
+}
+stage("sonarqube report")
+{
+sh "${mavenhome}/bin/mvn sonar:sonar"
+}
+stage("nexus")
+{
+sh "${mavenhome}/bin/mvn deploy"
+}
+stage("tomcat")
+{
+sshagent(['dc5fabdd-ea9e-489a-bb58-42468946d41a']) 
+{
+    sh "scp -o StrictHostKeyChecking=no target/java-web-app-1.0.war ec2-user@13.126.192.79:/opt/apache-tomcat-9.0.31/webapps/"
+}
+}
+}
