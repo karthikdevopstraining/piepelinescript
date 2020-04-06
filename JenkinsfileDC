@@ -21,7 +21,7 @@ stage("tomcat")
 {
 sshagent(['dc5fabdd-ea9e-489a-bb58-42468946d41a']) 
 {
-    sh "scp -o StrictHostKeyChecking=no target/java-web-app-1.0.war ec2-user@13.126.192.79:/opt/apache-tomcat-9.0.31/webapps/"
+    sh "scp -o StrictHostKeyChecking=no target/java-web-app-0.0.1-SNAPSHOT.war ec2-user@13.126.192.79:/opt/apache-tomcat-9.0.31/webapps/"
 }
 }
 }
