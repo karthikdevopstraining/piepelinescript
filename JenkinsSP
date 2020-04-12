@@ -1,0 +1,34 @@
+node 
+{
+def build = BUILD_NUMBER
+def mavenhome = tool name: "maven"
+stage("git code")
+{
+git credentialsId: '257353a6-5246-47ce-b3bc-55dbb2b449b8', url: 'https://github.com/karthikdevopstraining/spring-boot-mongo-docker.git'
+}
+stage("build app package")
+{
+sh "$mavenhome/bin/mvn clean package"
+}
+stage("image build")
+{
+sh "docker build -t devopskarthikl/springapp:${build} . "
+}
+stage("docker login and push image")
+{
+withCredentials([string(credentialsId: 'dccredential', variable: 'dccredential')]) {
+    sh "docker login -u devopskarthikl -p ${dccredential}"
+sh "docker push devopskarthikl/springapp:${build}"
+}
+}
+stage("cointainer")
+{
+sshagent(['docker_dev_server']) {
+    sh "ssh -o StrictHostKeyChecking=no ubuntu@13.126.91.1 docker network create -d bridge spring" 
+	sh "ssh -o StrictHostKeyChecking=no ubuntu@13.126.91.1 docker rm springcontainer || true"
+    sh "ssh -o StrictHostKeyChecking=no ubuntu@13.126.91.1 docker run -d -p 9090:8080 --name springcontainer --network spring devopskarthikl/springapp:${build}"
+	sh "ssh -o StrictHostKeyChecking=no ubuntu@13.126.91.1 docker volume create -d local springback"
+	 sh "ssh -o StrictHostKeyChecking=no ubuntu@13.126.91.1 docker run -d --name mongo -v springback:/data/db --network spring mongo"
+}
+}
+}
