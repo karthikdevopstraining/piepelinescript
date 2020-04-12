@@ -1,0 +1,31 @@
+node
+{
+def build = BUILD_NUMBER
+def mavenhome = tool name: "maven"
+stage("github")
+{
+git credentialsId: '257353a6-5246-47ce-b3bc-55dbb2b449b8', url: 'https://github.com/karthikdevopstraining/java-web-app-docker.git'
+}
+stage("build")
+{
+sh "$mavenhome/bin/mvn clean package"
+}
+stage("docker image")
+{
+sh "docker build -t devopskarthikl/javaapp:${build} . "
+}
+stage("docker login and push")
+{
+withCredentials([string(credentialsId: 'hubpassword', variable: 'hubpassword')]) {
+    sh "docker login -u devopskarthikl -p ${hubpassword}"
+}
+sh "docker push devopskarthikl/javaapp:${build}"
+}
+stage("docker deploy as container")
+{
+sshagent(['docker_dev_server']) {
+   sh "ssh -o StrictHostKeyChecking=no ubuntu@13.232.109.100 docker rm -f webapp1 || true" 
+    sh "ssh -o StrictHostKeyChecking=no ubuntu@13.232.109.100 docker run -d -p 8080:8080 --name webapp1  devopskarthikl/javaapp:${build}" 
+}
+}
+}
