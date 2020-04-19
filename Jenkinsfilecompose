@@ -1,0 +1,37 @@
+node{
+def mavenhome = tool name: "maven"
+def build = BUILD_NUMBER
+stage("getting code"){
+git branch: 'dev', credentialsId: '257353a6-5246-47ce-b3bc-55dbb2b449b8', url: 'https://github.com/karthikdevopstraining/spring-boot-mongo-docker.git'
+}
+stage("BUILD"){
+sh "$mavenhome/bin/mvn clean package"
+}
+stage("SONAR"){
+sh "$mavenhome/bin/mvn sonar:sonar"
+}
+stage("NEXUS"){
+sh "$mavenhome/bin/mvn deploy"
+}
+stage("DOCKER IMAGE"){
+sh "docker build -t 13.232.34.182:8083/springboot:${build} . "
+}
+stage("DOCKER LOGIN AND PUSH"){
+withCredentials([string(credentialsId: 'nexuspass2', variable: 'nexuspass2')]) {
+   sh "docker login -u admin -p ${nexuspass2} 13.232.34.182:8083" 
+   }
+ sh "docker push 13.232.34.182:8083/springboot:${build}"
+}
+stage("CONTAINER"){
+sshagent(['docker_dev_server']) {
+withCredentials([string(credentialsId: 'nexuspass2', variable: 'nexuspass2')]) {
+   sh "scp -o StrictHostKeyChecking=no  docker-compose.yml ubuntu@52.66.117.75:" 
+   sh "ssh -o StrictHostKeyChecking=no ubuntu@52.66.117.75 docker login -u admin -p ${nexuspass2} 13.232.34.182:8083"
+   sh "ssh -o StrictHostKeyChecking=no ubuntu@52.66.117.75 docker pull 13.232.34.182:8083/springboot:${build}"
+   sh "ssh -o StrictHostKeyChecking=no ubuntu@52.66.117.75 docker rm springcontainer || true"
+   sh "ssh -o StrictHostKeyChecking=no ubuntu@52.66.117.75 docker rm mongo || true"
+   sh "ssh -o StrictHostKeyChecking=no ubuntu@52.66.117.75 docker-compose up -d"
+}
+}
+}
+}
